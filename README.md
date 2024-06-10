@@ -13,13 +13,11 @@ Keen interest and passion in Machine Learning, NLP, and AI technology. Hands-on 
 
 ## Machine Learning Projects
 ### Project 1: Loan Interest Rate Prediction
-This project aims to 
+This project aims to analyze the various borrower information in the loan market and build machine learning models to predict the interest rate assigned to the loan. 
 
 **Corresponding Files:**
 
-_"DS_article_nlp_analysis.ipynb": actual code with details about datasets, project major sections, and authors._
-
-_"DS_article_nlp_analysis.pdf": PDF presentation slides of the core business insights, findings, key conclusions, and recommendations._
+_"loan_interest_prediction.ipynb": code with details about datasets, project major sections, and authors._
 
 ### Project 2: Customer Churn Prediction
 This project aims to 
