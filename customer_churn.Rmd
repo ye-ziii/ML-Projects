@@ -1,0 +1,597 @@
+---
+title: "Customer Churn Prediction Project"
+author: "Yezi Liu"
+date: "2023-10-30"
+output: html_document
+---
+
+## Project Summary
+#### Introduction
+This notebook is to analyze a company's consumer purchase history and use machine learning models to predict whether a customer will churn(abandon the brand) in the future. 
+
+#### Business Case
+It's for marketing managers to plan a new campaign designed to increase customer retention. The plan is to deliver the campaign to a targeted audience defined as customers who are likely to abandon the brand within six months. So a model needs to be developed to identify these customers.
+
+#### Dataset
+The dataset provided is a snapshot of consumer purchase history taken in mid-June. Customers who made no additional purchases during the six months following the snapshot period were assigned a `churn` value of 1, to indicate that they had abandoned the brand.
+
+Note: No data dictionary was given with this dataset. So the models built in this project were only based on the information that is been provided.
+
+#### Project Sections
+1. Import Data
+
+2. Basic Data Cleaning
+
+3. EDA 
+  - Univariate Analysis
+  - Bivariate Analysis
+  - XY Relationships Analysis
+
+4. Pre-processing/Feature Engineering
+
+5. Model Selection
+  - Logistic Regression
+  - Random Forest 
+  - Model Comparison
+  - Find Optimal Random Forest Model via Hyper-parameter Tuning
+  - Build Optimal RF Model with Best Hyper-parameters
+
+6. Model Evaluation
+
+7. Prediction
+
+#### Author & Platform
+Yezi Liu conducted this project independently using R Studio.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+```
+
+
+```{r}
+install.packages("readr")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("corrplot")
+install.packages("tidyr")
+install.packages("caret")
+install.packages("MLmetrics")
+install.packages("randomForest")
+install.packages("e1071")
+
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(tidyr)
+library(caret)
+library(MLmetrics)
+library(randomForest)
+library(e1071)
+set.seed(123)
+```
+
+
+## Import Data
+
+```{r}
+customer_data <- read_csv("/Users/lize/Desktop/DBC/Under Armour/train.csv")
+summary(customer_data)
+```
+
+There are no uncommon or extreme values in the data set and the type of each variable is reasonable.
+
+
+## Basic Data Cleaning
+
+```{r}
+# Remove duplicate and NA values
+customer_data <- distinct(customer_data)
+customer_data <- na.omit(customer_data)
+```
+
+## EDA
+
+### Univariate Analysis
+
+#### X Variables
+```{r}
+# Continuous X variables' violin plots
+continuous_cols <- c("last_purchase", "max_discount", "shoe_spend", "apparell_spend", "acc_spend")
+
+for (continuous_x in continuous_cols) {
+  
+  p <- ggplot(customer_data, aes(x = 1, y = !!as.name(continuous_x))) +
+    geom_violin() +
+    labs(title = paste("Violin Plot of", continuous_x))
+  print(p)
+}
+
+# Integer-value X variables' histograms
+integer_cols <- c("custserv_calls", "acc_purchasers", "promo_purchaser", "shoe_orders", "apparel_orders", "acc_orders")
+
+for (integer_x in integer_cols) {
+  p <- ggplot(customer_data, aes(x = !!as.name(integer_x))) +
+    geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+    labs(
+      title = paste("Histogram of", integer_x),
+      x = integer_x,
+      y = "Frequency"
+    )
+  print(p)
+}
+
+# Convert area_code into categorical variable
+customer_data$area_code <- as.character(customer_data$area_code)
+customer_data$area_code <- as.factor(customer_data$area_code)
+
+# Categorical X variables' count plots
+categorical_cols <- c("gender", "ecommShopper", "bhShopper", "area_code")
+
+for (categorical_x in categorical_cols) {
+  p <- ggplot(customer_data, aes(x = !!as.name(categorical_x))) +
+    geom_bar(fill = "orange", color = "black") +
+    labs(
+      title = paste("Count Plot of", categorical_x),
+      x = categorical_x,
+      y = "Count"
+    )
+  print(p)
+}
+
+p <- ggplot(customer_data, aes(x = state))+
+  geom_bar(fill = "orange") +
+  labs(
+    title = "Count Plot of States",
+    x = "States",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+print(p)
+
+```
+
+Findings:
+
+For "last_purchase", "shoe_spend", "apparell_spend", and "acc_spend", most observations are within a tight middle value range and few observations are low values or high values . For example, most "last_purchase" values are in 50 to 100 range and most "shoe_spend" values are in 150 to 350 range. The patterns are similar while the ranges are different. 
+
+For "max_discount", most values are below 0.1, indicating that most maximum discounts are less than 10% and there are a small amount of 30% maximum discounts.
+
+Most "custserv_calls" take on the value of 1 and it's right-skewed. As the number of "custserv_calls" increases, there are fewer occurrences, which aligns with common sense if "custserv_calls" represents the number of times a customer called.
+
+For "acc_purchasers" and " promo_purchaser", they both take on values of 0s and 1s, and most values are 0s. 
+
+Similarly, "shoe_orders", " apparel_orders", and "acc_orders" take on several unique integer values. "shoe_orders" and " apparel_orders" have similar trends and are clustered around 2 while most "acc_orders" values are 3 and 4.
+
+For categorical variables, similarly, there are imbalanced categories in each variable. Gender male dominates "gender", FALSE dominates "ecommShopper", TRUE dominates "bhShopper" and 415 area code dominates "area_code".
+
+There are many categories in "state". There are very few customers from states AD and ARZ and plenty of customers from state WV.
+
+
+#### Y Variable "churn"
+```{r}
+# Turn "churn" variable into categorical.
+customer_data$churn <- as.character(customer_data$churn)
+
+p <- ggplot(customer_data, aes(x = churn)) +
+  geom_bar( fill = "green", color = "black") +
+  labs(
+    title = "Histogram of Binary Response Variable 'churn'",
+    x = "Values",
+    y = "Frequency"
+  )
+print(p)
+
+prop_0_to_1 <- sum(customer_data$churn == "0") / sum(customer_data$churn == "1")
+print(prop_0_to_1)
+```
+
+Since the proportion of 0s to 1s in 'churn' is 5.7 : 1, there is little need to apply oversampling or under-sampling.
+
+
+### Bivariate Analysis
+
+```{r}
+# Create correlation plot to see correlations between explanatory continuous X variables
+correlation_data <- customer_data %>%
+  select_if(is.numeric)
+
+correlation_matrix <- cor(correlation_data)
+corrplot(correlation_matrix, method = "color")
+```
+
+Reasonably, there are four pairs of variables that are highly-correlated with each other: "shoe_orders" and "shoe_spend", "acc_orders" and "acc_spend", "promo_purchaser" and "max_discount", "apparel_orders" and "apparel_spend".  I would consider removing one of the two for these four pairs in the later data pre-processing section. 
+
+
+```{r}
+# Create stacked count plot to see relationships between explanatory categorical X variables
+categorical_data <- customer_data %>%
+  select(gender, ecommShopper, bhShopper, area_code)
+
+categorical_data_long <- categorical_data %>%
+  gather(variable, category)
+
+category_counts <- categorical_data_long %>%
+  group_by(variable, category) %>%
+  summarize(count = n())
+
+p <- ggplot(category_counts, aes(x = variable, y = count, fill = as.factor(category))) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Stacked Count Plot",
+    x = "Variables",
+    y = "Count"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.text = element_text(angle = 45, hjust = 1)) +  
+  theme(legend.position = "right") 
+print(p)
+```
+
+Findings:
+
+There are category imbalances in the distributions of "area_code", "bhShopper", "ecommShopper", and "gender".
+
+
+```{r}
+# Use GROUPBY to further analyze relationships between explanatory categorical X variables
+
+areacode_bhShopper <- customer_data %>%
+  group_by(area_code, bhShopper) %>%
+  summarize(count = n())
+print(areacode_bhShopper)
+
+areacode_ecommShopper <- customer_data %>%
+  group_by(area_code, ecommShopper) %>%
+  summarize(count = n())
+print(areacode_ecommShopper)
+
+
+gender_ecommShopper <- customer_data %>%
+  group_by(gender, ecommShopper) %>%
+  summarize(count = n())
+print(gender_ecommShopper)
+
+gender_bhShopper <- customer_data %>%
+  group_by(gender, bhShopper) %>%
+  summarize(count = n())
+print(gender_bhShopper)
+
+```
+
+Findings:
+
+In all three areas, there are doubled number of bhShoppers than that of non-bhShoppers. 
+
+In all three areas, there are doubled or tripled number of non-ecommShoppers than that of ecommShoppers. 
+
+So differences in areas don't affect "bhShopper" and "ecommShopper" much.
+
+40% of women are ecommShoppers and 29% of men are ecommShoppers so "gender" have some impact on "ecommShopper".
+
+70% of women are bhShoppers and 69% of men are bhShoppers so "gender" doesn't affect "bhShopper" much.
+
+
+### XY Relationships Analysis
+
+```{r}
+# Distribution plots of numerical x variables by dependent variable "churn"
+for (x_var in continuous_cols) {
+  p <- ggplot(customer_data, aes(x = !!as.name(x_var), fill = factor(customer_data$churn))) +
+    geom_density(alpha = 0.5) +
+    labs(
+      title = paste("Distribution Plot of", x_var, "Colored by churn"),
+      x = x_var
+    ) +
+    scale_fill_manual(values = c("0" = "blue", "1" = "red"),
+                      name = "churn") 
+  print(p)
+}
+
+```
+
+Findings:
+
+For "last_purchase", "apparell_spend", and "acc_spend", the overall trends for churns and no-churns are almost the same with some differences in certain range. For example, for last_purchase within range 50 to 75, there are obviously more churns than no-churns; for "apparell_spend", the two curves have similar shape but churn curve shifts slightly to the right. 
+
+For "max_discount" and "shoe_spend", there are obvious differences between curves, indicating the impact of these two variables on the dependent churn variable.
+
+In conclusion, all of these variables above could explain our Y variable "churn" to some extent.
+
+
+```{r}
+# Count plots of categorical x variables colored by dependent 'churn' variable
+
+for (int_var in integer_cols) {
+  p <- ggplot(customer_data, aes(x = factor(!!as.name(int_var)), fill = factor(customer_data$churn))) +
+    geom_bar() +
+    labs(
+      title = paste("Count Plot of", int_var, "Colored by churn"),
+      x = int_var,
+      y = "Count"
+    ) +
+    scale_fill_manual(values = c("0" = "blue", "1" = "red"), name = "churn")
+  print(p)
+}
+
+
+for (cat_var in categorical_cols) {
+  p <- ggplot(customer_data, aes(x = factor(!!as.name(cat_var)), fill = factor(customer_data$churn))) +
+    geom_bar() +
+    labs(
+      title = paste("Count Plot of", cat_var, "Colored by churn"),
+      x = cat_var,
+      y = "Count"
+    ) +
+    scale_fill_manual(values = c("0" = "blue", "1" = "red"), name = "churn")
+  print(p)
+}
+```
+
+Findings:
+
+Variables "custserv_calls", "acc_purchasers", "shoe_orders", and "apparel_orders" have more influence on the number of non-churns because the percentage changes in non-churns are much more significant than the percentage changes in churns for different X values. 
+
+Variables 'promo_purchaser", "acc_orders", "gender", "ecommShopper", "bhShopper", and "area_code" have roughly similar influence on churns and no-churns because the percentage changes in non-churns are similar to the percentage changes in churns for different X values.
+
+In conclusion, all variables above could impact our dependent "churn" variable to certain degree.
+
+## Preprocessing/Feature Engineering
+
+```{r}
+# One-hot-encoding for 'state' variable and look at each state's churn rate.
+# Prepare for feature engineering
+
+customer_data <- customer_data %>%
+  mutate_at(vars(state, churn), as.factor)
+
+churn_rates <- customer_data %>%
+  group_by(state) %>%
+  summarise(
+    total_records = n(),
+    churn_count = sum(churn == "1"),
+    churn_rate = churn_count / total_records
+  ) %>%
+  arrange(desc(churn_rate))
+
+ggplot(churn_rates, aes(x = reorder(state, -churn_rate), y = churn_rate)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(
+    title = "Churn Rate by State",
+    x = "State",
+    y = "Churn Rate"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Filter out states with churn rate higher than 0.2
+filtered_states <- churn_rates %>%
+  filter(churn_rate > 0.2)
+filtered_states
+```
+
+I used churn rate of 0.2 as the threshold to determine the importance of each state and there are 10 states that have churn rates higher than 0.2. I will include these states into my model later.
+
+
+```{r}
+# Create one-hot-encoding for states with churn rates higher than 0.2 and delete original
+# state variable.
+selected_states <- c("stateMD", "stateNJ", "stateCA", "stateTX", "stateAR", "stateMI", 
+                     "stateMN", "stateSC", "stateKS", "stateMS")
+
+encoded_state <- model.matrix(~state - 1, data = customer_data)
+customer_data <- cbind(customer_data, encoded_state)
+customer_data$state <- NULL
+
+customer_data <- cbind(customer_data[, c(1:17)], customer_data[, selected_states])
+```
+
+```{r}
+# Do one-hot-encoding for categorical variable gender
+encoded_gender <- model.matrix(~gender - 1, data = customer_data)
+customer_data <- cbind(customer_data, encoded_gender)
+customer_data$gender <- NULL
+```
+
+```{r}
+# Turn logical variables "ecommShopper" and "bhShopper" into binary variables
+customer_data$ecommShopper <- as.integer(customer_data$ecommShopper)
+customer_data$bhShopper <- as.integer(customer_data$bhShopper)
+```
+
+```{r}
+# Do one-hot-encoding for categorical variable area_code
+encoded_area_code <- model.matrix(~area_code - 1, data = customer_data)
+customer_data <- cbind(customer_data, encoded_area_code)
+customer_data$area_code <- NULL
+```
+
+
+```{r}
+# Delete one column from each of the 4 highly-correlated pairs mentioned earlier
+# Delete the phone column since it's not helpful for predicting customer churns.
+# Deleted "genderMale" and "area_code510" because "genderMale" is highly correlated to "genderFemale" and "area_code510" is highly correlated to the other two areas.
+remove_cols <-c("shoe_orders", "acc_orders", "apparel_orders", "promo_purchaser", "phone", "genderMale", "area_code510")
+customer_data <- customer_data[, !(names(customer_data) %in% remove_cols)]
+```
+
+
+## Model Selection
+
+### 1. Logistic Regression
+
+First model I tried is logistic regression because it's good at predicting binary outcomes and has high interpretability. Also, it handles both categorical and numerical variables very well and is efficient with small data sets.
+
+```{r}
+# Create validation set
+validation_prop <- 0.2
+num_validation <- round(nrow(customer_data) * validation_prop)
+validation_index <- sample(1:nrow(customer_data), num_validation)
+validation_set <- customer_data[validation_index, ]
+training_set <- customer_data[-validation_index, ]
+```
+
+```{r}
+# Perform logistic regression on the training set
+set.seed(123)
+logistic_model <- glm(churn ~ ., data = training_set, family = binomial(link = "logit"))
+summary(logistic_model)
+```
+
+Findings:
+
+According to the logistic regression model results, the coefficients of variables "max_discount", "shoe_spend", "apparell_spend", "acc_spend", "custserv_calls", "acc_purchasers" are statistically significant and different from 0 under 0.1% significance level. The coefficients of "stateCA" and "genderFemale" are statistically significant and different from 0 under 1% significance level. The coefficients of "stateNJ" and "stateTX" are statistically significant and different from 0 under 5% significance level. 
+
+
+```{r}
+# Use the logistic model on the validation set
+logit_pred <- predict(logistic_model, newdata = validation_set, type = "response")
+
+# Convert predicted probabilities to binary class labels
+logit_predicted_churn <- ifelse(logit_pred >= 0.5, "1", "0")
+
+# Calculate f1 score for validation set
+logit_f1 <- F1_Score(validation_set$churn, logit_predicted_churn)
+logit_f1
+```
+
+The F1 score of the logistic model on the validation set is 0.928. I kept the threshold probability of predicting customer churn as 0.5 because it's good to be conservative and target at all potential customers who are likely to churn with customized campaigns to avoid churn actions.
+
+
+### 2. Random Forest
+
+Second model I tried is random forest because it has high predictive accuracy in binary classification, which fits our purpose. Due to its ensemble nature, it effectively avoids over-fitting problems. Also, it can handle imbalanced data and some of our columns have imbalanced classes.
+
+```{r}
+# Train the random forest model in the train set
+set.seed(123)
+rf <- randomForest(churn ~ ., data = training_set, ntree = 100, proximity = TRUE)
+print(rf)
+```
+
+```{r}
+# Use random forest model on validation set
+rf_pred <- predict(rf, newdata = validation_set, type = "response")
+rf_f1 <- F1_Score(validation_set$churn, rf_pred)
+rf_f1
+```
+
+The F1 score of random forest model on the validation set is 0.963.
+
+### Choose Random Forest Over Logistic Regression
+
+The model metric I used to assess the model performance is F1 score because it balances precision and recall and can deal with imbalanced data sets to prevent models from being overly biased toward the majority class. So it works for our data set where there are several imbalanced columns. It also takes into consideration of both false positives and false negatives, making it a robust metric for our case. We want to lower false positives to limit the number of target customers to reduce campaign costs. We also want to lower false negatives to accurately target unloyal customers to increase customer retention.
+
+The F1 score from validation set for logistic regression is 0.928 and the one for random forest is 0.963 so I chose random forest model to proceed.
+
+
+### Find Optimal Random Forest Model via Hyperparameter Tuning
+
+```{r}
+# Tune hyper-parameters using validation set
+param_grid <- expand.grid(
+  ntree = c(50, 100, 150, 200),  
+  mtry = c(2, 4, 6, 8)      
+)
+
+best_ntree <- NULL
+best_mtry <- NULL
+best_f1 <- 0
+best_model <- NULL
+
+set.seed(128)
+
+for (i in 1:nrow(param_grid)) {
+  model <- randomForest(
+    churn ~ ., data = training_set, ntree = param_grid$ntree[i], mtry = param_grid$mtry[i]
+  )
+  
+  predictions <- predict(model, newdata = validation_set)
+  f1 <- F1_Score(validation_set$churn, predictions)
+  
+  if (f1 > best_f1) {
+    best_f1 <- f1
+    best_model <- model
+    best_ntree <- param_grid$ntree[i]
+    best_mtry <- param_grid$mtry[i]
+  }
+}
+print(f1)
+print(best_ntree)
+print(best_mtry)
+```
+
+The random forest model after hyper-parameter tuning has a F1 score of 0.964 on the validation set. Since it's a slight improvement from the previous F1 score 0.963, I chose this model as the optimal model(ntree = 150, mtry = 8).
+
+
+### Build Optimal Model with Best Hyperparameters
+
+```{r}
+set.seed(128)
+optimal_rf <- randomForest(churn ~ ., data = training_set, ntree = 150, mtry = 8, proximity = TRUE)
+print(optimal_rf)
+```
+
+
+### Comprehensive Evaluation of the Optimal Model on Validation Set
+
+```{r}
+best_pred <- predict(optimal_rf, newdata = validation_set)
+confusion_matrix <- confusionMatrix(best_pred, validation_set$churn)
+print(confusion_matrix)
+```
+
+Performance Evaluation:
+
+This optimal model is 98% correct at predicting non-churn customers and 63% correct at predicting churned customers. Overall, it's a good model to use. But such imbalanced model performance might be caused by the imbalanced classes in the Y label in the data set. Possible solutions include obtaining more data points from minority class, or using machine learning techniques to randomly remove majority class data points or generate synthetic minority class data points.
+
+Test Set:
+
+Since our training set is relatively small, I chose not to split another test set for testing in order to keep as much information as possible in the training set. If an independent test performance result is needed, we could obtain Y labels from the test file that is given.
+
+
+## Prediction on Test File
+
+```{r}
+customer_data_test <- read_csv("/Users/lize/Desktop/DBC/Under Armour/test.csv")
+customer_data_test <- distinct(customer_data_test)
+customer_data_test <- na.omit(customer_data_test)
+
+customer_data_test$area_code <- as.character(customer_data_test$area_code)
+customer_data_test$area_code <- as.factor(customer_data_test$area_code)
+
+#selected_states <- c("stateMD", "stateNJ", "stateCA", "stateTX", "stateAR", "stateMI", 
+#                     "stateMN", "stateSC", "stateKS", "stateMS")
+
+encoded_state_test <- model.matrix(~state - 1, data = customer_data_test)
+customer_data_test <- cbind(customer_data_test, encoded_state_test)
+customer_data_test$state <- NULL
+customer_data_test <- cbind(customer_data_test[, c(1:16)], customer_data_test[, selected_states])
+
+
+encoded_gender_test <- model.matrix(~gender - 1, data = customer_data_test)
+customer_data_test <- cbind(customer_data_test, encoded_gender_test)
+customer_data_test$gender <- NULL
+
+customer_data_test$ecommShopper <- as.integer(customer_data_test$ecommShopper)
+customer_data_test$bhShopper <- as.integer(customer_data_test$bhShopper)
+
+encoded_area_code_test <- model.matrix(~area_code - 1, data = customer_data_test)
+customer_data_test <- cbind(customer_data_test, encoded_area_code_test)
+customer_data_test$area_code <- NULL
+
+#remove_cols <-c("shoe_orders", "acc_orders", "apparel_orders", "promo_purchaser", "phone", #"genderMale", "area_code510")
+customer_data_test <- customer_data_test[, !(names(customer_data_test) %in% remove_cols)]
+
+```
+
+```{r}
+test_pred <- predict(optimal_rf, newdata = customer_data_test)
+```
+
+```{r}
+result_df <- data.frame(Predictions = test_pred)
+write.csv(result_df, file = "/Users/lize/Desktop/DBC/Under Armour/predicted_results.csv", row.names = FALSE)
+```
+
+
