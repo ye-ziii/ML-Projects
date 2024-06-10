@@ -1,4 +1,4 @@
-# Yezi's NLP Projects
+# Yezi's ML Projects
 
 ## About
 A passionate data scientist dedicated to unlocking the power of data and exploring AI-driven solutions. 
@@ -20,4 +20,9 @@ This project aims to analyze the various borrower information in the loan market
 _"loan_interest_prediction.ipynb": code with details about datasets, project major sections, and authors._
 
 ### Project 2: Customer Churn Prediction
-This project aims to 
+This project aims to analyze a company's consumer purchase history and use machine learning models to predict whether a customer will churn(abandon the brand) in the future. 
+
+**Corresponding Files:**
+
+_"customer_churn.Rmd": code with details about datasets, project major sections, and authors._
+_"customer_churn.html": the HTML version of the code._
