@@ -19,7 +19,7 @@ This project aims to analyze the various borrower information in the loan market
 | Ridge Regression's CV RMSE | KNN's CV RMSE | GradientBoosting's CV RMSE(Winning Model)|
 |----------|----------|----------|
 | 0.0351 | 0.0344 | 0.0318 |
-| Gradient Boosting Regressor RMSE on Test Set: 0.02799 |
+| | | RMSE on Test Set: 0.0280 |
 
 **Corresponding Files:**
 
