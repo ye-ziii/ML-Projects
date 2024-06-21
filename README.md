@@ -15,6 +15,12 @@ Keen interest and passion in Machine Learning, NLP, and AI technology. Hands-on 
 ### Project 1: Loan Interest Rate Prediction
 This project aims to analyze the various borrower information in the loan market and build machine learning models to predict the interest rate assigned to the loan. 
 
+**Models Performance Table:**
+| Ridge Regression's CV RMSE | KNN's CV RMSE | GradientBoosting's CV RMSE(Winning Model)|
+|----------|----------|----------|
+| 0.0351 | 0.0344 | 0.0318 |
+| Gradient Boosting Regressor RMSE on Test Set: 0.02799 |
+
 **Corresponding Files:**
 
 _"loan_interest_prediction.ipynb": code with details about datasets, project major sections, and authors._
