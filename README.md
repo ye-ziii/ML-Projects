@@ -18,8 +18,7 @@ This project aims to analyze the various borrower information in the loan market
 **Models Performance Table:**
 | Ridge Regression CV RMSE | KNN CV RMSE | GradientBoosting CV RMSE(Winning)|
 |----------|----------|----------|
-| 0.0351 | 0.0344 | 0.0318 |
-| | | **Final RMSE on Test Set: 0.0280** |
+| 0.0351 | 0.0344 | 0.0318(**Final RMSE on Test Set: 0.0280** ) |
 
 **Corresponding Files:**
 
