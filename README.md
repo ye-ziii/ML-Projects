@@ -30,7 +30,7 @@ This project aims to analyze a company's consumer purchase history and use machi
 **Model Performance Table:**
 | Random Forest |
 |----------|
-| Validation Set F1: 0.964 |
+| Validation Set F1: 0.9637 |
 | Validation Set Accuracy: 0.9343 |
 | Validation Set Sensitivity: 0.9847 |
 | Validation Set Specificity: 0.6267 |
