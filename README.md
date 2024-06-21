@@ -16,10 +16,10 @@ Keen interest and passion in Machine Learning, NLP, and AI technology. Hands-on 
 This project aims to analyze the various borrower information in the loan market and build machine learning models to predict the interest rate assigned to the loan. 
 
 **Models Performance Table:**
-| Ridge Regression's CV RMSE | KNN's CV RMSE | GradientBoosting's CV RMSE(Winning Model)|
+| Ridge Regression CV RMSE | KNN CV RMSE | GradientBoosting CV RMSE(Winning)|
 |----------|----------|----------|
 | 0.0351 | 0.0344 | 0.0318 |
-| | | RMSE on Test Set: 0.0280 |
+| | | **Final RMSE on Test Set: 0.0280** |
 
 **Corresponding Files:**
 
