@@ -27,6 +27,14 @@ _"loan_interest_prediction.ipynb": code with details about datasets, project maj
 ### Project 2: Customer Churn Prediction
 This project aims to analyze a company's consumer purchase history and use machine learning models to predict whether a customer will churn(abandon the brand) in the future. 
 
+**Model Performance Table:**
+| Random Forest |
+|----------|
+| Validation Set F1: 0.964(hyper-parameter tuning) |
+| Validation Set Accuracy: 0.9343 |
+| Validation Set Sensitivity: 0.9847 |
+| Validation Set Specificity: 0.6267 |
+
 **Corresponding Files:**
 
 _"customer_churn.Rmd": code with details about datasets, project major sections, and authors._
